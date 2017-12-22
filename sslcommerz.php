@@ -294,7 +294,7 @@ class Sslcommerz extends NonmerchantGateway
             if ($request->status == 'SUCCESS') {
                 $this->log($this->ifSet($_SERVER['REQUEST_URI']), serialize($request), 'output', true);
 
-                return $this->buildForm($request->redirectGatewayURL);
+                return $this->buildForm($request->GatewayPageURL);
             } else {
                 // The api has been responded with an error, set the error
                 $this->log($this->ifSet($_SERVER['REQUEST_URI']), serialize($request), 'output', false);
