@@ -221,8 +221,8 @@ class Sslcommerz extends NonmerchantGateway
             'currency' => $this->ifSet($this->currency),
             'tran_id' => uniqid(),
             'success_url' => $this->ifSet($options['return_url']) . '?client_id=' . $contact_info['client_id'],
-            'fail_url' => $this->ifSet($options['return_url']) . '?client_id=' . $contact_info['client_id'],
-            'cancel_url' => $this->ifSet($options['return_url']) . '?client_id=' . $contact_info['client_id'],
+            'fail_url' => $this->ifSet($options['return_url']) . '?client_id=' . $contact_info['client_id'] . '&fail=true',
+            'cancel_url' => $this->ifSet($options['return_url']) . '?client_id=' . $contact_info['client_id'] . '&cancel=true',
             'emi_option' => 0,
             'cus_name' => $this->Html->concat(
                 ' ',
@@ -395,6 +395,17 @@ class Sslcommerz extends NonmerchantGateway
         // Unfortunately SSLCommerz does not return post data on the redirect.
         // Get client id
         $client_id = $this->ifSet($get['client_id']);
+
+        if (isset($get['cancel']) && $get['cancel'] == 'true') {
+            $this->Input->setErrors([
+                'payment' => ['canceled' => Language::_('Sslcommerz.!error.payment.canceled', true)]
+            ]);
+        }
+        if (isset($get['fail']) && $get['fail'] == 'true') {
+            $this->Input->setErrors([
+                'payment' => ['failed' => Language::_('Sslcommerz.!error.payment.failed', true)]
+            ]);
+        }
 
         return [
             'client_id' => $client_id,

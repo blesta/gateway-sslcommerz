@@ -14,3 +14,5 @@ $lang['Sslcommerz.ipn_note'] = 'Before you start using this gateway you must con
 // Errors
 $lang['Sslcommerz.!error.store_id.valid'] = 'You must enter a valid Store ID.';
 $lang['Sslcommerz.!error.store_password.valid'] = 'You must enter a valid Store Password.';
+$lang['Sslcommerz.!error.payment.canceled'] = 'The payment has been canceled. Please visit the client dashboard to reattempt payment on the invoice.';
+$lang['Sslcommerz.!error.payment.failed'] = 'The payment has failed to be processed. Please visit the client dashboard to reattempt payment on the invoice.';
