@@ -217,24 +217,24 @@ class Sslcommerz extends NonmerchantGateway
 
         // Build the payment request
         $params = [
-            'total_amount' => $this->ifSet($amount),
-            'currency' => $this->ifSet($this->currency),
+            'total_amount' => ($amount ?? null),
+            'currency' => ($this->currency ?? null),
             'tran_id' => uniqid(),
-            'success_url' => $this->ifSet($options['return_url']) . '?client_id=' . $contact_info['client_id'],
-            'fail_url' => $this->ifSet($options['return_url']) . '?client_id=' . $contact_info['client_id'] . '&fail=true',
-            'cancel_url' => $this->ifSet($options['return_url']) . '?client_id=' . $contact_info['client_id'] . '&cancel=true',
+            'success_url' => (isset($options['return_url']) ? $options['return_url'] : null) . '?client_id=' . $contact_info['client_id'],
+            'fail_url' => (isset($options['return_url']) ? $options['return_url'] : null) . '?client_id=' . $contact_info['client_id'] . '&fail=true',
+            'cancel_url' => (isset($options['return_url']) ? $options['return_url'] : null) . '?client_id=' . $contact_info['client_id'] . '&cancel=true',
             'emi_option' => 0,
             'cus_name' => $this->Html->concat(
                 ' ',
-                $this->ifSet($contact_info['first_name']),
-                $this->ifSet($contact_info['last_name'])
+                (isset($contact_info['first_name']) ? $contact_info['first_name'] : null),
+                (isset($contact_info['last_name']) ? $contact_info['last_name'] : null)
             ),
-            'cus_email' => $this->ifSet($client->email),
-            'cus_phone' => $this->ifSet($client_phone),
-            'value_a' => $this->ifSet($invoices),
-            'value_b' => $this->ifSet($client->id)
+            'cus_email' => ($client->email ?? null),
+            'cus_phone' => ($client_phone ?? null),
+            'value_a' => ($invoices ?? null),
+            'value_b' => ($client->id ?? null)
         ];
-        $this->log($this->ifSet($_SERVER['REQUEST_URI']), serialize($params), 'input', true);
+        $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($params), 'input', true);
 
         // Send the request to the api
         $request = $api->buildPayment($params);
@@ -242,12 +242,12 @@ class Sslcommerz extends NonmerchantGateway
         // Build the payment form
         try {
             if ($request->status == 'SUCCESS') {
-                $this->log($this->ifSet($_SERVER['REQUEST_URI']), serialize($request), 'output', true);
+                $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($request), 'output', true);
 
                 return $this->buildForm($request->GatewayPageURL);
             } else {
                 // The api has been responded with an error, set the error
-                $this->log($this->ifSet($_SERVER['REQUEST_URI']), serialize($request), 'output', false);
+                $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($request), 'output', false);
                 $this->Input->setErrors(
                     ['api' => ['response' => $request->failedreason]]
                 );
@@ -305,7 +305,7 @@ class Sslcommerz extends NonmerchantGateway
         $api = new SslcommerzApi($this->meta['store_id'], $this->meta['store_password'], $this->meta['dev_mode']);
 
         // Get invoices
-        $invoices = $this->ifSet($post['value_a']);
+        $invoices = (isset($post['value_a']) ? $post['value_a'] : null);
 
         // Get the transaction details
         $response = $api->getPayment($post['tran_id']);
@@ -330,14 +330,14 @@ class Sslcommerz extends NonmerchantGateway
         }
 
         // Log response
-        $this->log($this->ifSet($_SERVER['REQUEST_URI']), serialize($response), 'output', $return_status);
+        $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($response), 'output', $return_status);
 
         // Get payment details
         $amount = number_format($response->currency_amount, 2, '.', '');
         $currency = $response->currency_type;
 
         // Get client id
-        $client_id = $this->ifSet($get['client_id'], $post['value_b']);
+        $client_id = (isset($get['client_id']) ? $get['client_id'] : $post['value_b']);
 
         return [
             'client_id' => $client_id,
@@ -345,7 +345,7 @@ class Sslcommerz extends NonmerchantGateway
             'currency' => $currency,
             'status' => $status,
             'reference_id' => null,
-            'transaction_id' => $this->ifSet($response->bank_tran_id, $post['tran_id']),
+            'transaction_id' => (isset($response->bank_tran_id) ? $response->bank_tran_id : $post['tran_id']),
             'invoices' => $this->unserializeInvoices($invoices)
         ];
     }
@@ -394,7 +394,7 @@ class Sslcommerz extends NonmerchantGateway
     {
         // Unfortunately SSLCommerz does not return post data on the redirect.
         // Get client id
-        $client_id = $this->ifSet($get['client_id']);
+        $client_id = (isset($get['client_id']) ? $get['client_id'] : null);
 
         if (isset($get['cancel']) && $get['cancel'] == 'true') {
             $this->Input->setErrors([
@@ -440,11 +440,11 @@ class Sslcommerz extends NonmerchantGateway
 
         // Build the payment refund
         $params = [
-            'bank_tran_id' => $this->ifSet($transaction_id),
-            'refund_amount' => $this->ifSet($amount),
-            'refund_remarks' => $this->ifSet($notes)
+            'bank_tran_id' => ($transaction_id ?? null),
+            'refund_amount' => ($amount ?? null),
+            'refund_remarks' => ($notes ?? null)
         ];
-        $this->log($this->ifSet($_SERVER['REQUEST_URI']), serialize($params), 'input', true);
+        $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($params), 'input', true);
 
         // Send the payment request to the api
         $response = $api->refundPayment($params);
@@ -475,13 +475,13 @@ class Sslcommerz extends NonmerchantGateway
         }
 
         // Log response
-        $this->log($this->ifSet($_SERVER['REQUEST_URI']), serialize($response), 'output', $return_status);
+        $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($response), 'output', $return_status);
 
         return [
             'status' => $status,
             'reference_id' => null,
-            'transaction_id' => $this->ifSet($transaction_id),
-            'message' => $this->ifSet($response->errorReason)
+            'transaction_id' => ($transaction_id ?? null),
+            'message' => ($response->errorReason ?? null)
         ];
     }
 
