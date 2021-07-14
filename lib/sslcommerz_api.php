@@ -1,4 +1,6 @@
 <?php
+use Blesta\Core\Util\Common\Traits\Container;
+
 /**
  * SSLCommerz API.
  *
@@ -10,6 +12,9 @@
  */
 class SslcommerzApi
 {
+    // Load traits
+    use Container;
+
     /**
      * @var string The store ID
      */
@@ -37,6 +42,10 @@ class SslcommerzApi
         $this->store_id = $store_id;
         $this->store_passwd = $store_passwd;
         $this->dev_mode = $dev_mode;
+
+        // Initialize logger
+        $logger = $this->getFromContainer('logger');
+        $this->logger = $logger;
     }
 
     /**
@@ -61,8 +70,14 @@ class SslcommerzApi
         curl_setopt($ch, CURLOPT_TIMEOUT, 20);
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+        if (Configure::get('Blesta.curl_verify_ssl')) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, true);
+        } else {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        }
 
         // Set authentication details
         $auth = [
@@ -89,10 +104,18 @@ class SslcommerzApi
 
         // Execute request
         curl_setopt($ch, CURLOPT_URL, $url . trim($method, '/'));
-        $data = json_decode(curl_exec($ch));
+
+        $response = curl_exec($ch);
+
+        if ($response == false) {
+            $this->logger->error(curl_error($ch));
+        } else {
+            $data = json_decode(curl_exec($ch));
+        }
+
         curl_close($ch);
 
-        return $data;
+        return $data ?? null;
     }
 
     /**
