@@ -79,8 +79,29 @@ class Sslcommerz extends NonmerchantGateway
             ],
             'store_password' => [
                 'valid' => [
-                    'rule' => 'isEmpty',
-                    'negate' => true,
+                    'rule' => function ($store_password) use ($meta) {
+                        try {
+                            $api = $this->getApi($meta['store_id'], $store_password, $meta['dev_mode']);
+
+                            $params = [
+                                'total_amount' => '1000.00',
+                                'currency' => 'BDT',
+                                'tran_id' => uniqid(),
+                                'emi_option' => 0,
+                                'cus_name' => 'Blesta',
+                                'cus_email' => 'noreply@blesta.com',
+                                'success_url' => 'https://blesta.com',
+                                'fail_url' => 'https://blesta.com',
+                                'cancel_url' => 'https://blesta.com'
+                            ];
+                            $payment = $api->buildPayment($params);
+
+                            return !empty($payment->sessionkey);
+                        } catch (Throwable $e) {
+                            print $e->getMessage();
+                            return false;
+                        }
+                    },
                     'message' => Language::_('Sslcommerz.!error.store_password.valid', true)
                 ]
             ]
@@ -169,9 +190,8 @@ class Sslcommerz extends NonmerchantGateway
         // Load the helpers required
         Loader::loadHelpers($this, ['Html']);
 
-        // Load library methods
-        Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'sslcommerz_api.php');
-        $api = new SslcommerzApi($this->meta['store_id'], $this->meta['store_password'], $this->meta['dev_mode']);
+        // Load API
+        $api = $this->getApi($this->meta['store_id'], $this->meta['store_password'], $this->meta['dev_mode']);
 
         // Force 2-decimal places only
         $amount = number_format($amount, 2, '.', '');
@@ -220,21 +240,21 @@ class Sslcommerz extends NonmerchantGateway
             'total_amount' => ($amount ?? null),
             'currency' => ($this->currency ?? null),
             'tran_id' => uniqid(),
-            'success_url' => (isset($options['return_url']) ? $options['return_url'] : null) . '?client_id=' . $contact_info['client_id'],
-            'fail_url' => (isset($options['return_url']) ? $options['return_url'] : null) . '?client_id=' . $contact_info['client_id'] . '&fail=true',
-            'cancel_url' => (isset($options['return_url']) ? $options['return_url'] : null) . '?client_id=' . $contact_info['client_id'] . '&cancel=true',
+            'success_url' => ($options['return_url'] ?? null) . '?client_id=' . $contact_info['client_id'],
+            'fail_url' => ($options['return_url'] ?? null) . '?client_id=' . $contact_info['client_id'] . '&fail=true',
+            'cancel_url' => ($options['return_url'] ?? null) . '?client_id=' . $contact_info['client_id'] . '&cancel=true',
             'emi_option' => 0,
             'cus_name' => $this->Html->concat(
                 ' ',
-                (isset($contact_info['first_name']) ? $contact_info['first_name'] : null),
-                (isset($contact_info['last_name']) ? $contact_info['last_name'] : null)
+                ($contact_info['first_name'] ?? null),
+                ($contact_info['last_name'] ?? null)
             ),
             'cus_email' => ($client->email ?? null),
             'cus_phone' => ($client_phone ?? null),
             'value_a' => ($invoices ?? null),
             'value_b' => ($client->id ?? null)
         ];
-        $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($params), 'input', true);
+        $this->log(($_SERVER['REQUEST_URI'] ?? null), serialize($params), 'input', true);
 
         // Send the request to the api
         $request = $api->buildPayment($params);
@@ -242,12 +262,12 @@ class Sslcommerz extends NonmerchantGateway
         // Build the payment form
         try {
             if ($request->status == 'SUCCESS') {
-                $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($request), 'output', true);
+                $this->log(($_SERVER['REQUEST_URI'] ?? null), serialize($request), 'output', true);
 
                 return $this->buildForm($request->GatewayPageURL);
             } else {
                 // The api has been responded with an error, set the error
-                $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($request), 'output', false);
+                $this->log(($_SERVER['REQUEST_URI'] ?? null), serialize($request), 'output', false);
                 $this->Input->setErrors(
                     ['api' => ['response' => $request->failedreason]]
                 );
@@ -300,12 +320,11 @@ class Sslcommerz extends NonmerchantGateway
      */
     public function validate(array $get, array $post)
     {
-        // Load library methods
-        Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'sslcommerz_api.php');
-        $api = new SslcommerzApi($this->meta['store_id'], $this->meta['store_password'], $this->meta['dev_mode']);
+        // Load API
+        $api = $this->getApi($this->meta['store_id'], $this->meta['store_password'], $this->meta['dev_mode']);
 
         // Get invoices
-        $invoices = (isset($post['value_a']) ? $post['value_a'] : null);
+        $invoices = ($post['value_a'] ?? null);
 
         // Get the transaction details
         $response = $api->getPayment($post['tran_id']);
@@ -330,14 +349,14 @@ class Sslcommerz extends NonmerchantGateway
         }
 
         // Log response
-        $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($response), 'output', $return_status);
+        $this->log(($_SERVER['REQUEST_URI'] ?? null), serialize($response), 'output', $return_status);
 
         // Get payment details
         $amount = number_format($response->currency_amount, 2, '.', '');
         $currency = $response->currency_type;
 
         // Get client id
-        $client_id = (isset($get['client_id']) ? $get['client_id'] : $post['value_b']);
+        $client_id = ($get['client_id'] ?? $post['value_b']);
 
         return [
             'client_id' => $client_id,
@@ -345,7 +364,7 @@ class Sslcommerz extends NonmerchantGateway
             'currency' => $currency,
             'status' => $status,
             'reference_id' => null,
-            'transaction_id' => (isset($response->bank_tran_id) ? $response->bank_tran_id : $post['tran_id']),
+            'transaction_id' => ($response->bank_tran_id ?? $post['tran_id']),
             'invoices' => $this->unserializeInvoices($invoices)
         ];
     }
@@ -394,7 +413,7 @@ class Sslcommerz extends NonmerchantGateway
     {
         // Unfortunately SSLCommerz does not return post data on the redirect.
         // Get client id
-        $client_id = (isset($get['client_id']) ? $get['client_id'] : null);
+        $client_id = ($get['client_id'] ?? null);
 
         if (isset($get['cancel']) && $get['cancel'] == 'true') {
             $this->Input->setErrors([
@@ -434,9 +453,8 @@ class Sslcommerz extends NonmerchantGateway
      */
     public function refund($reference_id, $transaction_id, $amount, $notes = null)
     {
-        // Load library methods
-        Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'sslcommerz_api.php');
-        $api = new SslcommerzApi($this->meta['store_id'], $this->meta['store_password'], $this->meta['dev_mode']);
+        // Load API
+        $api = $this->getApi($this->meta['store_id'], $this->meta['store_password'], $this->meta['dev_mode']);
 
         // Build the payment refund
         $params = [
@@ -444,7 +462,7 @@ class Sslcommerz extends NonmerchantGateway
             'refund_amount' => ($amount ?? null),
             'refund_remarks' => ($notes ?? null)
         ];
-        $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($params), 'input', true);
+        $this->log(($_SERVER['REQUEST_URI'] ?? null), serialize($params), 'input', true);
 
         // Send the payment request to the api
         $response = $api->refundPayment($params);
@@ -475,7 +493,7 @@ class Sslcommerz extends NonmerchantGateway
         }
 
         // Log response
-        $this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($response), 'output', $return_status);
+        $this->log(($_SERVER['REQUEST_URI'] ?? null), serialize($response), 'output', $return_status);
 
         return [
             'status' => $status,
@@ -525,5 +543,20 @@ class Sslcommerz extends NonmerchantGateway
         }
 
         return $invoices;
+    }
+
+    /**
+     * Loads the given API if not already loaded
+     *
+     * @param string $store_id The store ID
+     * @param string $store_password The store password
+     * @param string $dev_mode True, to enable the sandbox environment
+     * @return SslcommerzApi An instance of the SSLCommerz API
+     */
+    private function getApi($store_id, $store_password, $dev_mode = false)
+    {
+        Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'sslcommerz_api.php');
+
+        return new SslcommerzApi($store_id, $store_password, $dev_mode);
     }
 }

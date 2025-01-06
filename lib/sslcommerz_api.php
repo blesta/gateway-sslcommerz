@@ -31,6 +31,11 @@ class SslcommerzApi
     private $dev_mode;
 
     /**
+     * @var \Monolog\Logger An instance of Monolog
+     */
+    protected $logger;
+
+    /**
      * Initializes the class.
      *
      * @param string $store_id The store ID
